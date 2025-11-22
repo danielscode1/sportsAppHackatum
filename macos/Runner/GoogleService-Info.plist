@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyBUFH6bHJHTrx4t2NV8pC63XtOkSDnPKJU</string>
+	<string>AIzaSyCdzyowjqwus0wBYUXs8wc_y0jzZ4gJAmk</string>
 	<key>GCM_SENDER_ID</key>
-	<string>450059323726</string>
+	<string>578146280080</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.example.sportsAppHackatum</string>
 	<key>PROJECT_ID</key>
-	<string>sportsmunich-272d5</string>
+	<string>hackatumsportsapp-d4582</string>
 	<key>STORAGE_BUCKET</key>
-	<string>sportsmunich-272d5.firebasestorage.app</string>
+	<string>hackatumsportsapp-d4582.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:450059323726:ios:b03b507a5affa68be4f61f</string>
+	<string>1:578146280080:ios:e306404b893f0f106eee15</string>
 </dict>
 </plist>

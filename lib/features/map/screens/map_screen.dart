@@ -17,11 +17,8 @@ import '../../../common/models/amenity_model.dart';
 import '../../../common/repositories/auth_repository.dart';
 import '../../../common/repositories/events_repository.dart';
 import '../../auth/providers/auth_provider.dart';
-<<<<<<< HEAD
 import '../providers/map_provider.dart';
-=======
 import '../data/amenities_data.dart';
->>>>>>> 69ee2861928ee8e8ef241dd99d1e9137b2e111c6
 
 class MapScreen extends HookConsumerWidget {
   const MapScreen({super.key});
