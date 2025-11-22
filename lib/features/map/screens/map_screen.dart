@@ -358,24 +358,24 @@ class EventPopup extends ConsumerWidget {
     final user = authState.value;
     final isHost = user?.uid == event.hostId;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.5,
-      minChildSize: 0.3,
-      maxChildSize: 0.7,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Column(
+            return DraggableScrollableSheet(
+              initialChildSize: 0.5,
+              minChildSize: 0.3,
+              maxChildSize: 0.7,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
             children: [
               Container(
                 margin: const EdgeInsets.only(top: 12),
@@ -735,6 +735,8 @@ class EventPopup extends ConsumerWidget {
                             final user = authState.value;
                             final isHost = user?.uid == event.hostId;
 
+                            final bool canChat = isHost || isAttending;
+                    
                             if (event.isInviteOnly && !isAttending && !isHost) {
                               return Row(
                                 children: [
@@ -800,7 +802,7 @@ class EventPopup extends ConsumerWidget {
                                       child: ElevatedButton(
                                         onPressed: () async {
                                           if (user == null) return;
-                                          if (isAttending) {
+                                          if(isAttending) {
                                             await eventsRepo.leaveEvent(event.id, user.uid);
                                           } else {
                                             await eventsRepo.joinEvent(event.id, user.uid);
@@ -810,19 +812,19 @@ class EventPopup extends ConsumerWidget {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (context) => ChatScreen(eventId: event.id),
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Open Chat'),
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: canChat ? () {
+                                            Navigator.pop(context);
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (context) => ChatScreen(eventId: event.id),
+                                              ),
+                                            );
+                                          } : null,
+                                          child: const Text('Open Chat'),
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ],

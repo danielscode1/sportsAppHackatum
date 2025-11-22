@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/event_model.dart';
+import 'dart:math';
 
 class EventsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -125,9 +126,8 @@ class EventsRepository {
           .collection('attendees')
           .get();
       
-      // If only host remains or no one remains, delete event
-      if (attendeesSnapshot.docs.isEmpty || 
-          (attendeesSnapshot.docs.length == 1 && attendeesSnapshot.docs.first.id == hostId)) {
+      // If no one remains, or host leaves, delete event
+      if (attendeesSnapshot.docs.isEmpty || userId == hostId) {
         await deleteEvent(eventId);
       }
     }
