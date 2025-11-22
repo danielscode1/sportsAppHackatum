@@ -44,14 +44,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-<<<<<<< HEAD
-=======
-  uses-material-design: true
-
-  assets:
-    - assets/sports/
->>>>>>> 2ccb00d (update event detail image + assets)
-=======
-  assets:
-    - assets/sports/
->>>>>>> de9f16a (changed yaml, added assets folder)
