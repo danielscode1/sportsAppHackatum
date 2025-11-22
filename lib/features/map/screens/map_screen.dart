@@ -93,6 +93,8 @@ class MapScreen extends HookConsumerWidget {
     final searchQuery = useState('');
     final showSearch = useState(false);
     final selectedDate = useState<DateTime>(DateTime.now());
+    final showFilters = useState(false);
+    final mapFilters = ref.watch(mapFiltersProvider);
 
     return Scaffold(
       body: Stack(
@@ -102,18 +104,22 @@ class MapScreen extends HookConsumerWidget {
             onPageChanged: (index) => currentPage.value = index,
             children: [
               const ChatsListScreen(),
-              _buildMapView(context, ref, mapController, eventsAsync, showEventPopup, handleMapTap, isPlacingEvent, searchQuery, selectedDate),
+              _buildMapView(context, ref, mapController, eventsAsync, showEventPopup, handleMapTap, isPlacingEvent, searchQuery, selectedDate, showFilters),
               EventsListScreen(goToMapPage: goToMapPage),
             ],
           ),
           // Top floating buttons (search, date picker, and settings)
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
                   _buildCircularFloatingButton(
                     context: context,
                     icon: showSearch.value ? Icons.close : Icons.search,
@@ -127,89 +133,93 @@ class MapScreen extends HookConsumerWidget {
                     },
                   ),
                   // Day navigation control in center
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? Colors.white.withOpacity(0.95)
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: () {
-                            selectedDate.value = selectedDate.value.subtract(const Duration(days: 1));
-                          },
-                          iconSize: 20,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 16),
-                        GestureDetector(
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: selectedDate.value,
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
-                            );
-                            if (picked != null) {
-                              selectedDate.value = picked;
-                            }
-                          },
-                          child: Text(
-                            _formatDate(selectedDate.value),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).brightness == Brightness.light
-                                  ? const Color(0xFF1976D2)
-                                  : Theme.of(context).colorScheme.onSurface,
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.light
+                              ? Colors.white.withOpacity(0.95)
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: () {
-                            selectedDate.value = selectedDate.value.add(const Duration(days: 1));
-                          },
-                          iconSize: 20,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        if (!_isToday(selectedDate.value)) ...[
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () {
-                              selectedDate.value = DateTime.now();
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.chevron_left),
+                              onPressed: () {
+                                selectedDate.value = selectedDate.value.subtract(const Duration(days: 1));
+                              },
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                             ),
-                            child: Text(
-                              'Today',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).brightness == Brightness.light
-                                    ? const Color(0xFF1976D2)
-                                    : Theme.of(context).colorScheme.primary,
+                            const SizedBox(width: 16),
+                            GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate.value,
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                                );
+                                if (picked != null) {
+                                  selectedDate.value = picked;
+                                }
+                              },
+                              child: Text(
+                                _formatDate(selectedDate.value),
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).brightness == Brightness.light
+                                      ? const Color(0xFF1976D2)
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ],
+                            const SizedBox(width: 16),
+                            IconButton(
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: () {
+                                selectedDate.value = selectedDate.value.add(const Duration(days: 1));
+                              },
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            if (!_isToday(selectedDate.value)) ...[
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () {
+                                  selectedDate.value = DateTime.now();
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'Today',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(context).brightness == Brightness.light
+                                        ? const Color(0xFF1976D2)
+                                        : Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   currentUserAsync.when(
@@ -290,7 +300,39 @@ class MapScreen extends HookConsumerWidget {
                 ],
               ),
             ),
+            ),
           ),
+          // Filter button positioned below profile button
+          Positioned(
+            top: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0, top: 80.0),
+                child: _buildCircularFloatingButton(
+                  context: context,
+                  icon: showFilters.value ? Icons.filter_list_off : Icons.filter_list,
+                  onPressed: () {
+                    showFilters.value = !showFilters.value;
+                  },
+                ),
+              ),
+            ),
+          ),
+          // Filter panel (shown when showFilters is true) - only show on map page
+          if (showFilters.value && currentPage.value == 1)
+            Positioned(
+              top: 80,
+              right: 16,
+              child: SafeArea(
+                child: Builder(
+                  builder: (context) {
+                    final filters = ref.read(mapFiltersProvider);
+                    return _buildFilterPanel(context, ref, filters, showFilters);
+                  },
+                ),
+              ),
+            ),
           // Bottom floating navigation buttons
           Positioned(
             bottom: 0,
@@ -373,10 +415,10 @@ class MapScreen extends HookConsumerWidget {
     ValueNotifier<bool> isPlacingEvent,
     ValueNotifier<String> searchQuery,
     ValueNotifier<DateTime> selectedDate,
+    ValueNotifier<bool> showFilters,
   ) {
     final locationAsync = ref.watch(locationProvider);
     final mapFilters = ref.watch(mapFiltersProvider);
-    final showFilters = useState(false);
 
     return Stack(
       children: [
@@ -598,7 +640,7 @@ class MapScreen extends HookConsumerWidget {
     return dateOnly != today;
   }
 
-  Widget _buildFilterPanel(BuildContext context, WidgetRef ref, MapFilters filters) {
+  Widget _buildFilterPanel(BuildContext context, WidgetRef ref, MapFilters filters, ValueNotifier<bool> showFilters) {
     return Container(
       width: 200,
       padding: const EdgeInsets.all(16),
@@ -617,11 +659,25 @@ class MapScreen extends HookConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Map Filters',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Map Filters',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                iconSize: 20,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  showFilters.value = false;
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildFilterOption(
