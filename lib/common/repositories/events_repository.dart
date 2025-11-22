@@ -1,17 +1,28 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/event_model.dart';
 
 class EventsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _firebaseStorage = FirebaseStorage.instance;
 
   Stream<List<EventModel>> getEventsStream() {
+    final now = Timestamp.now();
     return _firestore
         .collection('events')
-        .orderBy('createdAt', descending: true)
+        .where('endTime', isGreaterThan: now) // Only show events that haven't ended
+        .orderBy('endTime')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => EventModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+          // Filter out events that have ended (in case endTime field is missing)
+          return snapshot.docs
+              .map((doc) => EventModel.fromFirestore(doc))
+              .where((event) => event.endTime.isAfter(DateTime.now()))
+              .toList();
+        });
   }
 
   Future<String> createEvent(EventModel event) async {
@@ -28,6 +39,58 @@ class EventsRepository {
     });
 
     return docRef.id;
+  }
+
+  Future<void> updateEvent(EventModel event) async {
+    await _firestore
+        .collection('events')
+        .doc(event.id)
+        .update(event.toFirestore());
+  }
+
+  Future<String> uploadEventImage(String eventId, XFile imageFile, int index) async {
+    try {
+      final ref = _firebaseStorage
+          .ref()
+          .child('event_images')
+          .child(eventId)
+          .child('$index.jpg');
+      
+      UploadTask uploadTask;
+      
+      if (kIsWeb) {
+        // For web, read bytes from XFile and add metadata
+        final bytes = await imageFile.readAsBytes();
+        if (bytes.isEmpty) {
+          throw Exception('Image file is empty');
+        }
+        final metadata = SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {'uploadedBy': 'user'},
+        );
+        uploadTask = ref.putData(bytes, metadata);
+      } else {
+        // For mobile, use File with metadata
+        final file = File(imageFile.path);
+        if (!await file.exists()) {
+          throw Exception('Image file does not exist');
+        }
+        final metadata = SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {'uploadedBy': 'user'},
+        );
+        uploadTask = ref.putFile(file, metadata);
+      }
+      
+      // Wait for upload to complete
+      final snapshot = await uploadTask;
+      
+      // Get download URL
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      throw Exception('Failed to upload image: ${e.toString()}');
+    }
   }
 
   Future<void> joinEvent(String eventId, String userId) async {
@@ -48,6 +111,66 @@ class EventsRepository {
         .collection('attendees')
         .doc(userId)
         .delete();
+    
+    // Check if event should be auto-deleted (last member is creator)
+    final eventDoc = await _firestore.collection('events').doc(eventId).get();
+    if (eventDoc.exists) {
+      final eventData = eventDoc.data()!;
+      final hostId = eventData['hostId'] as String;
+      
+      // Get remaining attendees
+      final attendeesSnapshot = await _firestore
+          .collection('events')
+          .doc(eventId)
+          .collection('attendees')
+          .get();
+      
+      // If only host remains or no one remains, delete event
+      if (attendeesSnapshot.docs.isEmpty || 
+          (attendeesSnapshot.docs.length == 1 && attendeesSnapshot.docs.first.id == hostId)) {
+        await deleteEvent(eventId);
+      }
+    }
+  }
+
+  Future<void> deleteEvent(String eventId) async {
+    // Delete all subcollections first
+    final batch = _firestore.batch();
+    
+    // Delete attendees
+    final attendees = await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendees')
+        .get();
+    for (final doc in attendees.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // Delete requests
+    final requests = await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('requests')
+        .get();
+    for (final doc in requests.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // Delete chat messages
+    final chatMessages = await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('chat')
+        .get();
+    for (final doc in chatMessages.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // Delete event document
+    batch.delete(_firestore.collection('events').doc(eventId));
+    
+    await batch.commit();
   }
 
   Future<void> requestToJoin(String eventId, String userId) async {
@@ -72,6 +195,11 @@ class EventsRepository {
     
     // Add to attendees
     await joinEvent(eventId, userId);
+  }
+
+  // Alias for approveRequest
+  Future<void> acceptRequest(String eventId, String userId) async {
+    await approveRequest(eventId, userId);
   }
 
   Future<void> rejectRequest(String eventId, String userId) async {

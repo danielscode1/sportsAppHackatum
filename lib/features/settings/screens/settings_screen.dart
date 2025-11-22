@@ -319,16 +319,20 @@ class SettingsScreen extends ConsumerWidget {
   void _toggleVerification(BuildContext context, WidgetRef ref, UserModel user) async {
     try {
       final authRepo = ref.read(authRepositoryProvider);
+      final newVerifiedStatus = !(user.isVerified ?? false);
       await authRepo.updateUserData(
-        user.copyWith(isVerified: !(user.isVerified ?? false)),
+        user.copyWith(isVerified: newVerifiedStatus),
       );
 
       if (context.mounted) {
+        // Refresh the current user provider to update UI
+        ref.invalidate(currentUserProvider);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(user.isVerified == true
-                ? 'Account verification removed'
-                : 'Account verified'),
+            content: Text(newVerifiedStatus
+                ? 'Account verified'
+                : 'Account verification removed'),
           ),
         );
       }

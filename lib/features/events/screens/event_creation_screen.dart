@@ -3,6 +3,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../common/models/event_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../map/providers/map_provider.dart';
@@ -27,8 +29,11 @@ class EventCreationScreen extends HookConsumerWidget {
     final capacityController = useTextEditingController(text: '20');
     final selectedSportType = useState('basketball');
     final selectedDateTime = useState<DateTime>(DateTime.now().add(const Duration(hours: 1)));
+    final startTime = useState<DateTime>(DateTime.now());
+    final endTime = useState<DateTime>(DateTime.now().add(const Duration(hours: 1)));
     final isLoading = useState(false);
     final isInviteOnly = useState(false);
+    final imageUrls = useState<List<String>>([]);
 
     final authState = ref.watch(authStateProvider);
     final eventsRepo = ref.watch(eventsRepositoryProvider);
@@ -66,13 +71,16 @@ class EventCreationScreen extends HookConsumerWidget {
           sportType: selectedSportType.value,
           description: descriptionController.text.trim(),
           note: noteController.text.trim(),
-          datetime: selectedDateTime.value,
+          datetime: startTime.value, // Keep for backward compatibility
+          startTime: startTime.value,
+          endTime: endTime.value,
           capacity: capacity,
           lat: initialLocation.latitude,
           lng: initialLocation.longitude,
           createdAt: DateTime.now(),
           estimatedBusyness: 0,
           isInviteOnly: isInviteOnly.value,
+          imageUrls: imageUrls.value,
         );
 
         await eventsRepo.createEvent(event);
@@ -95,10 +103,10 @@ class EventCreationScreen extends HookConsumerWidget {
       }
     }
 
-    Future<void> selectDateTime() async {
+    Future<void> selectStartTime() async {
       final date = await showDatePicker(
         context: context,
-        initialDate: selectedDateTime.value,
+        initialDate: startTime.value,
         firstDate: DateTime.now(),
         lastDate: DateTime.now().add(const Duration(days: 365)),
       );
@@ -107,18 +115,59 @@ class EventCreationScreen extends HookConsumerWidget {
 
       final time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.fromDateTime(selectedDateTime.value),
+        initialTime: TimeOfDay.fromDateTime(startTime.value),
       );
 
       if (time == null) return;
 
-      selectedDateTime.value = DateTime(
+      final newStartTime = DateTime(
         date.year,
         date.month,
         date.day,
         time.hour,
         time.minute,
       );
+      startTime.value = newStartTime;
+      
+      // Auto-adjust end time if it's before start time
+      if (endTime.value.isBefore(newStartTime) || endTime.value.isAtSameMomentAs(newStartTime)) {
+        endTime.value = newStartTime.add(const Duration(hours: 1));
+      }
+    }
+
+    Future<void> selectEndTime() async {
+      final date = await showDatePicker(
+        context: context,
+        initialDate: endTime.value,
+        firstDate: startTime.value,
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+      );
+
+      if (date == null) return;
+
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(endTime.value),
+      );
+
+      if (time == null) return;
+
+      final newEndTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+      
+      // Ensure end time is after start time
+      if (newEndTime.isAfter(startTime.value)) {
+        endTime.value = newEndTime;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End time must be after start time')),
+        );
+      }
     }
 
     return Scaffold(
@@ -209,12 +258,21 @@ class EventCreationScreen extends HookConsumerWidget {
               ),
               const SizedBox(height: 16),
               ListTile(
-                title: const Text('Date & Time'),
+                title: const Text('Start Time'),
                 subtitle: Text(
-                  DateFormat('yyyy-MM-dd HH:mm').format(selectedDateTime.value),
+                  DateFormat('yyyy-MM-dd HH:mm').format(startTime.value),
                 ),
                 trailing: const Icon(Icons.calendar_today),
-                onTap: selectDateTime,
+                onTap: selectStartTime,
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                title: const Text('End Time'),
+                subtitle: Text(
+                  DateFormat('yyyy-MM-dd HH:mm').format(endTime.value),
+                ),
+                trailing: const Icon(Icons.access_time),
+                onTap: selectEndTime,
               ),
               const SizedBox(height: 16),
               SwitchListTile(

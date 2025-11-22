@@ -3,14 +3,17 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:intl/intl.dart';
 import '../providers/map_provider.dart';
 import '../../events/screens/event_creation_screen.dart';
 import '../../chats/screens/chats_list_screen.dart';
 import '../../chats/screens/chat_screen.dart';
 import '../../events/screens/events_list_screen.dart';
+import '../../events/screens/event_edit_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../../common/models/event_model.dart';
 import '../../../common/repositories/auth_repository.dart';
+import '../../../common/repositories/events_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class MapScreen extends HookConsumerWidget {
@@ -331,6 +334,9 @@ class EventPopup extends ConsumerWidget {
     final attendeesAsync = ref.watch(eventAttendeesProvider(event.id));
     final hasRequestedAsync = ref.watch(hasRequestedProvider(event.id));
     final requestsAsync = ref.watch(eventRequestsProvider(event.id));
+    
+    final user = authState.value;
+    final isHost = user?.uid == event.hostId;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -360,6 +366,26 @@ class EventPopup extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
+              // Image gallery section (top white area)
+              if (event.imageUrls.isNotEmpty)
+                SizedBox(
+                  height: 200,
+                  child: PageView.builder(
+                    itemCount: event.imageUrls.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          image: DecorationImage(
+                            image: NetworkImage(event.imageUrls[index]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               Expanded(
                 child: ListView(
                   controller: scrollController,
@@ -374,6 +400,23 @@ class EventPopup extends ConsumerWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                        ),
+                        Builder(
+                          builder: (context) {
+                            if (!isHost) return const SizedBox.shrink();
+                            return IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => EventEditScreen(event: event),
+                                  ),
+                                );
+                              },
+                              tooltip: 'Edit Event',
+                            );
+                          },
                         ),
                         if (event.isInviteOnly)
                           Container(
@@ -490,22 +533,36 @@ class EventPopup extends ConsumerWidget {
                                     builder: (context, ref, child) {
                                       final userAsync = ref.watch(userDataProvider(userId));
                                       return userAsync.when(
-                                        data: (user) => Container(
-                                          width: 40,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white, width: 2),
-                                            image: user?.profileImageUrl != null
-                                                ? DecorationImage(
-                                                    image: NetworkImage(user!.profileImageUrl!),
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                : null,
+                                        data: (user) => Tooltip(
+                                          message: user?.username ?? 'Unknown',
+                                          child: GestureDetector(
+                                            onLongPress: () {
+                                              // Show username in a snackbar on long press
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(user?.username ?? 'Unknown'),
+                                                  duration: const Duration(seconds: 2),
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              width: 40,
+                                              height: 40,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(color: Colors.white, width: 2),
+                                                image: user?.profileImageUrl != null
+                                                    ? DecorationImage(
+                                                        image: NetworkImage(user!.profileImageUrl!),
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : null,
+                                              ),
+                                              child: user?.profileImageUrl == null
+                                                  ? const Icon(Icons.person, size: 20)
+                                                  : null,
+                                            ),
                                           ),
-                                          child: user?.profileImageUrl == null
-                                              ? const Icon(Icons.person, size: 20)
-                                              : null,
                                         ),
                                         loading: () => const SizedBox(
                                           width: 40,
@@ -647,34 +704,75 @@ class EventPopup extends ConsumerWidget {
                               );
                             }
 
-                            return Row(
+                            return Column(
                               children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      if (user == null) return;
-                                      if (isAttending) {
-                                        await eventsRepo.leaveEvent(event.id, user.uid);
-                                      } else {
-                                        await eventsRepo.joinEvent(event.id, user.uid);
-                                      }
-                                    },
-                                    child: Text(isAttending ? 'Leave' : 'Join'),
+                                if (isHost)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final confirmed = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Delete Event'),
+                                            content: const Text('Are you sure you want to delete this event? This cannot be undone.'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.red,
+                                                ),
+                                                child: const Text('Delete'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirmed == true && context.mounted) {
+                                          await eventsRepo.deleteEvent(event.id);
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Event deleted')),
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      label: const Text('Delete Event', style: TextStyle(color: Colors.red)),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => ChatScreen(eventId: event.id),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text('Open Chat'),
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          if (user == null) return;
+                                          if (isAttending) {
+                                            await eventsRepo.leaveEvent(event.id, user.uid);
+                                          } else {
+                                            await eventsRepo.joinEvent(event.id, user.uid);
+                                          }
+                                        },
+                                        child: Text(isAttending ? 'Leave' : 'Join'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => ChatScreen(eventId: event.id),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Open Chat'),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             );
