@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../common/models/event_model.dart';
 import '../../../common/repositories/events_repository.dart';
 import '../../../common/repositories/auth_repository.dart';
@@ -154,81 +153,7 @@ class EventEditScreen extends HookConsumerWidget {
       }
     }
 
-    Future<void> pickImage() async {
-      // Check authentication
-      final user = authState.value;
-      if (user == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('You must be logged in to upload images'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Limit to 6 images
-      if (imageUrls.value.length >= 6) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Maximum 6 images allowed')),
-          );
-        }
-        return;
-      }
-
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85, // Compress image to reduce upload time
-      );
-      if (pickedFile != null) {
-        try {
-          isLoading.value = true;
-          
-          // Show progress indicator
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Uploading image...'),
-                duration: Duration(seconds: 1),
-              ),
-            );
-          }
-          
-          final imageUrl = await eventsRepo.uploadEventImage(
-            event.id,
-            pickedFile,
-            imageUrls.value.length,
-          );
-          
-          imageUrls.value = [...imageUrls.value, imageUrl];
-          
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Image uploaded successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error uploading image: ${e.toString()}'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
-        } finally {
-          isLoading.value = false;
-        }
-      }
-    }
+    // Image upload disabled - removed pickImage function
 
     return Scaffold(
       appBar: AppBar(
@@ -340,67 +265,31 @@ class EventEditScreen extends HookConsumerWidget {
                 value: isInviteOnly.value,
                 onChanged: (value) => isInviteOnly.value = value,
               ),
+              // Image upload disabled - using default placeholder
               const SizedBox(height: 16),
-              const Text(
-                'Event Images',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              if (imageUrls.value.isNotEmpty)
-                SizedBox(
-                  height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: imageUrls.value.length,
-                    itemBuilder: (context, index) {
-                      return Stack(
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 120,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              image: DecorationImage(
-                                image: NetworkImage(imageUrls.value[index]),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 4,
-                            right: 12,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white),
-                              onPressed: () {
-                                imageUrls.value = imageUrls.value
-                                    .where((url) => url != imageUrls.value[index])
-                                    .toList();
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
                 ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: imageUrls.value.length >= 6 ? null : pickImage,
-                icon: const Icon(Icons.add_photo_alternate),
-                label: Text('Add Image (${imageUrls.value.length}/6)'),
-              ),
-              if (imageUrls.value.length >= 6)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Maximum 6 images reached',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 12,
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Image upload is disabled. A default sports icon will be shown for events.',
+                        style: TextStyle(
+                          color: Colors.blue[900],
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: isLoading.value ? null : handleSubmit,

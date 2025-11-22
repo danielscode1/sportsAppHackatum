@@ -367,25 +367,56 @@ class EventPopup extends ConsumerWidget {
                 ),
               ),
               // Image gallery section (top white area)
-              if (event.imageUrls.isNotEmpty)
-                SizedBox(
-                  height: 200,
-                  child: PageView.builder(
-                    itemCount: event.imageUrls.length,
-                    itemBuilder: (context, index) {
-                      return Container(
+              SizedBox(
+                height: 200,
+                child: event.imageUrls.isNotEmpty
+                    ? PageView.builder(
+                        itemCount: event.imageUrls.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            margin: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: NetworkImage(event.imageUrls[index]),
+                                fit: BoxFit.cover,
+                                onError: (exception, stackTrace) {
+                                  // Fallback to default if image fails to load
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
                         margin: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          image: DecorationImage(
-                            image: NetworkImage(event.imageUrls[index]),
-                            fit: BoxFit.cover,
+                          color: Colors.grey[200],
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.sports_soccer,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                event.sportType.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
+              ),
               Expanded(
                 child: ListView(
                   controller: scrollController,
