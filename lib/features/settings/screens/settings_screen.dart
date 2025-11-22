@@ -32,6 +32,21 @@ class SettingsScreen extends ConsumerWidget {
               // Account Information
               _buildSectionHeader('Account Information'),
               ListTile(
+                leading: CircleAvatar(
+                  radius: 30,
+                  backgroundImage: user.profileImageUrl != null
+                      ? NetworkImage(user.profileImageUrl!)
+                      : null,
+                  child: user.profileImageUrl == null
+                      ? const Icon(Icons.person, size: 30)
+                      : null,
+                ),
+                title: const Text('Profile Picture'),
+                subtitle: const Text('Tap to change'),
+                trailing: const Icon(Icons.edit),
+                onTap: () => _showProfilePictureDialog(context, ref, user),
+              ),
+              ListTile(
                 leading: const Icon(Icons.person),
                 title: const Text('Username'),
                 subtitle: Text(user.username),
@@ -42,6 +57,20 @@ class SettingsScreen extends ConsumerWidget {
                 leading: const Icon(Icons.email),
                 title: const Text('Email'),
                 subtitle: Text(user.email),
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.verified,
+                  color: user.isVerified == true ? Colors.blue : Colors.grey,
+                ),
+                title: const Text('Verified Account'),
+                subtitle: Text(user.isVerified == true ? 'Verified' : 'Not verified'),
+                trailing: user.isVerified != true
+                    ? TextButton(
+                        onPressed: () => _toggleVerification(context, ref, user),
+                        child: const Text('Verify'),
+                      )
+                    : null,
               ),
               const Divider(),
 
@@ -234,6 +263,82 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showProfilePictureDialog(BuildContext context, WidgetRef ref, UserModel user) {
+    final imageUrlController = TextEditingController(text: user.profileImageUrl ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change Profile Picture'),
+        content: TextField(
+          controller: imageUrlController,
+          decoration: const InputDecoration(
+            labelText: 'Image URL',
+            hintText: 'Enter image URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final imageUrl = imageUrlController.text.trim();
+              
+              try {
+                final authRepo = ref.read(authRepositoryProvider);
+                await authRepo.updateUserData(
+                  user.copyWith(profileImageUrl: imageUrl.isEmpty ? null : imageUrl),
+                );
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile picture updated')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleVerification(BuildContext context, WidgetRef ref, UserModel user) async {
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.updateUserData(
+        user.copyWith(isVerified: !(user.isVerified ?? false)),
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(user.isVerified == true
+                ? 'Account verification removed'
+                : 'Account verified'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
   }
 }
 

@@ -50,6 +50,67 @@ class EventsRepository {
         .delete();
   }
 
+  Future<void> requestToJoin(String eventId, String userId) async {
+    await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('requests')
+        .doc(userId)
+        .set({
+      'requestedAt': Timestamp.now(),
+    });
+  }
+
+  Future<void> approveRequest(String eventId, String userId) async {
+    // Remove from requests
+    await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('requests')
+        .doc(userId)
+        .delete();
+    
+    // Add to attendees
+    await joinEvent(eventId, userId);
+  }
+
+  Future<void> rejectRequest(String eventId, String userId) async {
+    await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('requests')
+        .doc(userId)
+        .delete();
+  }
+
+  Future<bool> hasRequested(String eventId, String userId) async {
+    final doc = await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('requests')
+        .doc(userId)
+        .get();
+    return doc.exists;
+  }
+
+  Stream<List<String>> getEventRequests(String eventId) {
+    return _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('requests')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toList());
+  }
+
+  Stream<List<String>> getEventAttendees(String eventId) {
+    return _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendees')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toList());
+  }
+
   Stream<int> getAttendeeCount(String eventId) {
     return _firestore
         .collection('events')

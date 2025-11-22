@@ -13,6 +13,7 @@ class EventModel {
   final double lng;
   final DateTime createdAt;
   final int estimatedBusyness;
+  final bool isInviteOnly;
 
   EventModel({
     required this.id,
@@ -27,6 +28,7 @@ class EventModel {
     required this.lng,
     required this.createdAt,
     this.estimatedBusyness = 0,
+    this.isInviteOnly = false,
   });
 
   factory EventModel.fromFirestore(DocumentSnapshot doc) {
@@ -45,6 +47,7 @@ class EventModel {
       lng: coords['lng'] as double,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       estimatedBusyness: data['estimatedBusyness'] as int? ?? 0,
+      isInviteOnly: data['isInviteOnly'] as bool? ?? false,
     );
   }
 
@@ -63,6 +66,7 @@ class EventModel {
       },
       'createdAt': Timestamp.fromDate(createdAt),
       'estimatedBusyness': estimatedBusyness,
+      'isInviteOnly': isInviteOnly,
     };
   }
 }

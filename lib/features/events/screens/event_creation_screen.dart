@@ -28,6 +28,7 @@ class EventCreationScreen extends HookConsumerWidget {
     final selectedSportType = useState('basketball');
     final selectedDateTime = useState<DateTime>(DateTime.now().add(const Duration(hours: 1)));
     final isLoading = useState(false);
+    final isInviteOnly = useState(false);
 
     final authState = ref.watch(authStateProvider);
     final eventsRepo = ref.watch(eventsRepositoryProvider);
@@ -71,6 +72,7 @@ class EventCreationScreen extends HookConsumerWidget {
           lng: initialLocation.longitude,
           createdAt: DateTime.now(),
           estimatedBusyness: 0,
+          isInviteOnly: isInviteOnly.value,
         );
 
         await eventsRepo.createEvent(event);
@@ -213,6 +215,13 @@ class EventCreationScreen extends HookConsumerWidget {
                 ),
                 trailing: const Icon(Icons.calendar_today),
                 onTap: selectDateTime,
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Invite Only'),
+                subtitle: const Text('Users must request to join'),
+                value: isInviteOnly.value,
+                onChanged: (value) => isInviteOnly.value = value,
               ),
               const SizedBox(height: 24),
               ElevatedButton(

@@ -7,6 +7,7 @@ class UserModel {
   final String? profileImageUrl;
   final DateTime createdAt;
   final bool? darkMode;
+  final bool? isVerified;
 
   UserModel({
     required this.id,
@@ -15,6 +16,7 @@ class UserModel {
     this.profileImageUrl,
     required this.createdAt,
     this.darkMode,
+    this.isVerified,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -26,6 +28,7 @@ class UserModel {
       profileImageUrl: data['profileImageUrl'] as String?,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       darkMode: data['preferences']?['darkMode'] as bool?,
+      isVerified: data['isVerified'] as bool? ?? false,
     );
   }
 
@@ -38,6 +41,7 @@ class UserModel {
       'preferences': {
         'darkMode': darkMode ?? false,
       },
+      'isVerified': isVerified ?? false,
     };
   }
 
@@ -46,6 +50,7 @@ class UserModel {
     String? email,
     String? profileImageUrl,
     bool? darkMode,
+    bool? isVerified,
   }) {
     return UserModel(
       id: id,
@@ -54,6 +59,7 @@ class UserModel {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       createdAt: createdAt,
       darkMode: darkMode ?? this.darkMode,
+      isVerified: isVerified ?? this.isVerified,
     );
   }
 }

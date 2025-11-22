@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../common/repositories/events_repository.dart';
+import '../../../common/repositories/auth_repository.dart';
 import '../../../common/models/event_model.dart';
+import '../../../common/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
@@ -55,5 +57,34 @@ final isUserAttendingProvider = FutureProvider.family<bool, String>((ref, eventI
     loading: () => Future.value(false),
     error: (_, __) => Future.value(false),
   );
+});
+
+final eventAttendeesProvider = StreamProvider.family<List<String>, String>((ref, eventId) {
+  final repository = ref.watch(eventsRepositoryProvider);
+  return repository.getEventAttendees(eventId);
+});
+
+final hasRequestedProvider = FutureProvider.family<bool, String>((ref, eventId) async {
+  final authState = ref.watch(authStateProvider);
+  final repository = ref.watch(eventsRepositoryProvider);
+  
+  return authState.when(
+    data: (user) async {
+      if (user == null) return false;
+      return await repository.hasRequested(eventId, user.uid);
+    },
+    loading: () => Future.value(false),
+    error: (_, __) => Future.value(false),
+  );
+});
+
+final userDataProvider = FutureProvider.family<UserModel?, String>((ref, userId) async {
+  final authRepo = ref.watch(authRepositoryProvider);
+  return await authRepo.getUserData(userId);
+});
+
+final eventRequestsProvider = StreamProvider.family<List<String>, String>((ref, eventId) {
+  final repository = ref.watch(eventsRepositoryProvider);
+  return repository.getEventRequests(eventId);
 });
 
