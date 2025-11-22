@@ -5,6 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import '../providers/map_provider.dart';
+import '../providers/map_filters_provider.dart';
 import '../../events/screens/event_creation_screen.dart';
 import '../../chats/screens/chats_list_screen.dart';
 import '../../chats/screens/chat_screen.dart';
@@ -12,9 +13,11 @@ import '../../events/screens/events_list_screen.dart';
 import '../../events/screens/event_edit_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../../common/models/event_model.dart';
+import '../../../common/models/amenity_model.dart';
 import '../../../common/repositories/auth_repository.dart';
 import '../../../common/repositories/events_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../data/amenities_data.dart';
 
 class MapScreen extends HookConsumerWidget {
   const MapScreen({super.key});
@@ -230,6 +233,8 @@ class MapScreen extends HookConsumerWidget {
     ValueNotifier<String> searchQuery,
   ) {
     final locationAsync = ref.watch(locationProvider);
+    final mapFilters = ref.watch(mapFiltersProvider);
+    final showFilters = useState(false);
 
     return Stack(
       children: [
@@ -259,40 +264,116 @@ class MapScreen extends HookConsumerWidget {
                     child: const Icon(Icons.location_on, color: Colors.blue, size: 20),
                   ),
                 // Event markers
-                ...eventsAsync.when(
-                  data: (events) {
-                    // Filter by search query if active
-                    final filteredEvents = searchQuery.value.isEmpty
-                        ? events
-                        : events.where((event) {
-                            final query = searchQuery.value.toLowerCase();
-                            return event.title.toLowerCase().contains(query) ||
-                                event.sportType.toLowerCase().contains(query) ||
-                                event.description.toLowerCase().contains(query);
-                          }).toList();
-                    
-                    return filteredEvents.map((event) {
-                    return Marker(
-                      point: LatLng(event.lat, event.lng),
-                      width: 40,
-                      height: 40,
-                      child: GestureDetector(
-                        onTap: () => showEventPopup(event),
+                if (mapFilters.showEvents)
+                  ...eventsAsync.when(
+                    data: (events) {
+                      // Filter by search query if active
+                      final filteredEvents = searchQuery.value.isEmpty
+                          ? events
+                          : events.where((event) {
+                              final query = searchQuery.value.toLowerCase();
+                              return event.title.toLowerCase().contains(query) ||
+                                  event.sportType.toLowerCase().contains(query) ||
+                                  event.description.toLowerCase().contains(query);
+                            }).toList();
+                      
+                      return filteredEvents.map((event) {
+                      return Marker(
+                        point: LatLng(event.lat, event.lng),
+                        width: 40,
+                        height: 40,
+                        child: GestureDetector(
+                          onTap: () => showEventPopup(event),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(Icons.sports_soccer, color: Colors.white, size: 24),
+                          ),
+                        ),
+                      );
+                      }).toList();
+                    },
+                    loading: () => [],
+                    error: (_, __) => [],
+                  ),
+                // Amenity markers (toilets and water supply)
+                ...AmenitiesData.allAmenities.where((amenity) {
+                  switch (amenity.type) {
+                    case AmenityType.toilet:
+                      return mapFilters.showToilets;
+                    case AmenityType.waterSupply:
+                      return mapFilters.showWaterSupply;
+                    case AmenityType.sportArea:
+                      return false; // Sport areas not used
+                  }
+                }).map((amenity) {
+                  return Marker(
+                    point: amenity.location,
+                    width: 32,
+                    height: 32,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Show info about the amenity
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(
+                              amenity.type == AmenityType.toilet 
+                                  ? 'Public Toilet'
+                                  : 'Drinking Water',
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (amenity.name != null) ...[
+                                  Text(
+                                    amenity.name!,
+                                    style: Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                                if (amenity.description != null) ...[
+                                  Text(amenity.description!),
+                                  const SizedBox(height: 8),
+                                ],
+                                Text(
+                                  'Location: ${amenity.location.latitude.toStringAsFixed(6)}, ${amenity.location.longitude.toStringAsFixed(6)}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: amenity.type == AmenityType.toilet 
+                                ? Colors.orange 
+                                : Colors.blue,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),
-                          child: const Icon(Icons.sports_soccer, color: Colors.white, size: 24),
+                          child: Icon(
+                            amenity.type == AmenityType.toilet 
+                                ? Icons.wc 
+                                : Icons.water_drop,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
-                      ),
-                    );
-                    }).toList();
-                  },
-                  loading: () => [],
-                  error: (_, __) => [],
-                ),
+                    ),
+                  );
+                }),
               ],
             ),
           ],
@@ -316,7 +397,133 @@ class MapScreen extends HookConsumerWidget {
               ),
             ),
           ),
+        // Filter button
+        Positioned(
+          top: 16,
+          right: 16,
+          child: FloatingActionButton(
+            mini: true,
+            onPressed: () {
+              showFilters.value = !showFilters.value;
+            },
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            child: Icon(
+              showFilters.value ? Icons.close : Icons.filter_list,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+        // Filter panel
+        if (showFilters.value)
+          Positioned(
+            top: 80,
+            right: 16,
+            child: _buildFilterPanel(context, ref, mapFilters),
+          ),
       ],
+    );
+  }
+
+  Widget _buildFilterPanel(BuildContext context, WidgetRef ref, MapFilters filters) {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Map Filters',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildFilterOption(
+            context,
+            ref,
+            'Events',
+            filters.showEvents,
+            Icons.sports_soccer,
+            Colors.red,
+            () => ref.read(mapFiltersProvider.notifier).toggleEvents(),
+          ),
+          const SizedBox(height: 12),
+          _buildFilterOption(
+            context,
+            ref,
+            'Restrooms',
+            filters.showToilets,
+            Icons.wc,
+            Colors.orange,
+            () => ref.read(mapFiltersProvider.notifier).toggleToilets(),
+          ),
+          const SizedBox(height: 12),
+          _buildFilterOption(
+            context,
+            ref,
+            'Drinking Water',
+            filters.showWaterSupply,
+            Icons.water_drop,
+            Colors.blue,
+            () => ref.read(mapFiltersProvider.notifier).toggleWaterSupply(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterOption(
+    BuildContext context,
+    WidgetRef ref,
+    String label,
+    bool isEnabled,
+    IconData icon,
+    Color color,
+    VoidCallback onToggle,
+  ) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isEnabled ? color : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: isEnabled 
+                      ? Theme.of(context).colorScheme.onSurface 
+                      : Colors.grey,
+                ),
+              ),
+            ),
+            Icon(
+              isEnabled ? Icons.check_circle : Icons.circle_outlined,
+              color: isEnabled ? color : Colors.grey,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
