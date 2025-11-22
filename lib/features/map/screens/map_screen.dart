@@ -47,6 +47,7 @@ class MapScreen extends HookConsumerWidget {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        backgroundColor: Colors.transparent,
         builder: (context) => EventPopup(event: event),
       ).then((_) => selectedEvent.value = null);
     }
@@ -338,24 +339,24 @@ class EventPopup extends ConsumerWidget {
     final user = authState.value;
     final isHost = user?.uid == event.hostId;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Column(
+            return DraggableScrollableSheet(
+              initialChildSize: 0.5,
+              minChildSize: 0.3,
+              maxChildSize: 0.7,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
             children: [
               Container(
                 margin: const EdgeInsets.only(top: 12),
@@ -366,7 +367,7 @@ class EventPopup extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // Image gallery section (top white area)
+              // Image gallery section (show placeholder if no images, or images if they exist)
               SizedBox(
                 height: 200,
                 child: event.imageUrls.isNotEmpty
