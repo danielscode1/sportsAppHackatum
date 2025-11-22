@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import '../../map/providers/map_provider.dart';
+import '../../../common/repositories/events_repository.dart';
 
 class EventsListScreen extends HookConsumerWidget {
   final VoidCallback goToMapPage;
@@ -25,10 +26,22 @@ class EventsListScreen extends HookConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Events'),
-      ),
-      body: Column(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Add extra top padding to avoid overlap with floating search button
+            const SizedBox(height: 72),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text(
+                'Events',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -103,6 +116,10 @@ class EventsListScreen extends HookConsumerWidget {
             ),
           ),
         ],
+      ),
+            ),
+          ],
+        ),
       ),
     );
   }

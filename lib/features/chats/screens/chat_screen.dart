@@ -18,6 +18,7 @@ class ChatScreen extends HookConsumerWidget {
     final chatRepo = ref.watch(chatRepositoryProvider);
     final messagesAsync = ref.watch(chatMessagesProvider(eventId));
     final authState = ref.watch(authStateProvider);
+    final eventAsync = ref.watch(eventByIdProvider(eventId));
 
     Future<void> sendMessage() async {
       final content = messageController.text.trim();
@@ -37,7 +38,11 @@ class ChatScreen extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: eventAsync.when(
+          data: (event) => Text(event?.title ?? 'Chat'),
+          loading: () => const Text('Chat'),
+          error: (_, __) => const Text('Chat'),
+        ),
       ),
       body: Column(
         children: [
@@ -120,8 +125,8 @@ class ChatScreen extends HookConsumerWidget {
                                           ),
                                           decoration: BoxDecoration(
                                             color: isCurrentUser
-                                                ? Colors.blue
-                                                : Colors.grey[300],
+                                                ? Theme.of(context).colorScheme.primary
+                                                : Theme.of(context).colorScheme.surfaceContainerHighest,
                                             borderRadius: BorderRadius.circular(16),
                                           ),
                                           constraints: BoxConstraints(
@@ -134,8 +139,8 @@ class ChatScreen extends HookConsumerWidget {
                                                 message.content,
                                                 style: TextStyle(
                                                   color: isCurrentUser
-                                                      ? Colors.white
-                                                      : Colors.black,
+                                                      ? Theme.of(context).colorScheme.onPrimary
+                                                      : Theme.of(context).colorScheme.onSurface,
                                                 ),
                                               ),
                                               const SizedBox(height: 4),
@@ -143,8 +148,8 @@ class ChatScreen extends HookConsumerWidget {
                                                 DateFormat('HH:mm').format(message.timestamp),
                                                 style: TextStyle(
                                                   color: isCurrentUser
-                                                      ? Colors.white70
-                                                      : Colors.black54,
+                                                      ? Theme.of(context).colorScheme.onPrimary.withOpacity(0.7)
+                                                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -191,13 +196,17 @@ class ChatScreen extends HookConsumerWidget {
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: isCurrentUser ? Colors.blue : Colors.grey[300],
+                                color: isCurrentUser 
+                                    ? Theme.of(context).colorScheme.primary 
+                                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
                                 message.content,
                                 style: TextStyle(
-                                  color: isCurrentUser ? Colors.white : Colors.black,
+                                  color: isCurrentUser 
+                                      ? Theme.of(context).colorScheme.onPrimary 
+                                      : Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),

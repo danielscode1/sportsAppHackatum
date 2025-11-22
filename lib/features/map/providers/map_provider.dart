@@ -88,3 +88,8 @@ final eventRequestsProvider = StreamProvider.family<List<String>, String>((ref, 
   return repository.getEventRequests(eventId);
 });
 
+final eventByIdProvider = FutureProvider.family<EventModel?, String>((ref, eventId) async {
+  final repository = ref.watch(eventsRepositoryProvider);
+  return await repository.getEventById(eventId);
+});
+

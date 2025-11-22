@@ -22,10 +22,22 @@ class ChatsListScreen extends ConsumerWidget {
     final eventsAsync = ref.watch(eventsStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chats'),
-      ),
-      body: authState.when(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Add extra top padding to avoid overlap with floating search button
+            const SizedBox(height: 72),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text(
+                'Chats',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Expanded(
+              child: authState.when(
         data: (user) {
           if (user == null) {
             return const Center(child: Text('Please sign in'));
@@ -82,6 +94,10 @@ class ChatsListScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Error: $error')),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

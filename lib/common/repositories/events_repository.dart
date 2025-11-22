@@ -133,6 +133,16 @@ class EventsRepository {
     }
   }
 
+  Future<void> removeAttendee(String eventId, String userId) async {
+    // Only allow host to remove attendees (enforced by Firestore rules)
+    await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendees')
+        .doc(userId)
+        .delete();
+  }
+
   Future<void> deleteEvent(String eventId) async {
     // Delete all subcollections first
     final batch = _firestore.batch();
@@ -266,6 +276,12 @@ class EventsRepository {
         .map((snapshot) => snapshot.docs
             .map((doc) => doc.reference.parent.parent!.id)
             .toList());
+  }
+
+  Future<EventModel?> getEventById(String eventId) async {
+    final doc = await _firestore.collection('events').doc(eventId).get();
+    if (!doc.exists) return null;
+    return EventModel.fromFirestore(doc);
   }
 
   Future<List<EventModel>> getPastEvents(String userId) async {

@@ -92,151 +92,273 @@ class MapScreen extends HookConsumerWidget {
     final currentUserAsync = ref.watch(currentUserProvider);
     final searchQuery = useState('');
     final showSearch = useState(false);
+    final selectedDate = useState<DateTime>(DateTime.now());
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: showSearch.value
-            ? TextField(
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Search events...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-                ),
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                onChanged: (value) => searchQuery.value = value,
-              )
-            : null,
-        leading: IconButton(
-          icon: Icon(showSearch.value ? Icons.close : Icons.search),
-          onPressed: () {
-            showSearch.value = !showSearch.value;
-            if (!showSearch.value) searchQuery.value = '';
-          },
-        ),
-        actions: [
-          currentUserAsync.when(
-            data: (user) => GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                  image: user?.profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(user!.profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: user?.profileImageUrl == null
-                    ? Icon(
-                        Icons.person,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
-                    : null,
-              ),
-            ),
-            loading: () => Container(
-              margin: const EdgeInsets.only(right: 16),
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey[300],
-              ),
-              child: const CircularProgressIndicator(strokeWidth: 2),
-            ),
-            error: (_, __) => IconButton(
-              icon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      body: PageView(
-        controller: pageController,
-        onPageChanged: (index) => currentPage.value = index,
+      body: Stack(
         children: [
-          const ChatsListScreen(),
-          _buildMapView(context, ref, mapController, eventsAsync, showEventPopup, handleMapTap, isPlacingEvent, searchQuery),
-          EventsListScreen(goToMapPage: goToMapPage),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          PageView(
+            controller: pageController,
+            onPageChanged: (index) => currentPage.value = index,
             children: [
-            IconButton(
-              icon: const Icon(Icons.chat_bubble_outline),
-              onPressed: () {
-                pageController.animateToPage(
-                  0,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
-            ),
-            IconButton(
-              icon: Icon(currentPage.value == 1 ? Icons.add : Icons.map),
-              onPressed: () {
-                if (currentPage.value == 1) {
-                  isPlacingEvent.value = true;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Tap on the map to place your event'),
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                } else {
-                  pageController.animateToPage(
-                    1,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                }
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.list),
-              onPressed: () {
-                pageController.animateToPage(
-                  2,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
-            ),
-          ],
+              const ChatsListScreen(),
+              _buildMapView(context, ref, mapController, eventsAsync, showEventPopup, handleMapTap, isPlacingEvent, searchQuery, selectedDate),
+              EventsListScreen(goToMapPage: goToMapPage),
+            ],
           ),
-        ),
+          // Top floating buttons (search, date picker, and settings)
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildCircularFloatingButton(
+                    context: context,
+                    icon: showSearch.value ? Icons.close : Icons.search,
+                    onPressed: () {
+                      if (showSearch.value) {
+                        showSearch.value = false;
+                        searchQuery.value = '';
+                      } else {
+                        _showSearchDialog(context, ref, searchQuery, showSearch);
+                      }
+                    },
+                  ),
+                  // Day navigation control in center
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.white.withOpacity(0.95)
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () {
+                            selectedDate.value = selectedDate.value.subtract(const Duration(days: 1));
+                          },
+                          iconSize: 20,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 16),
+                        GestureDetector(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate.value,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                            );
+                            if (picked != null) {
+                              selectedDate.value = picked;
+                            }
+                          },
+                          child: Text(
+                            _formatDate(selectedDate.value),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).brightness == Brightness.light
+                                  ? const Color(0xFF1976D2)
+                                  : Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () {
+                            selectedDate.value = selectedDate.value.add(const Duration(days: 1));
+                          },
+                          iconSize: 20,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        if (!_isToday(selectedDate.value)) ...[
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              selectedDate.value = DateTime.now();
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Today',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).brightness == Brightness.light
+                                    ? const Color(0xFF1976D2)
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  currentUserAsync.when(
+                    data: (user) {
+                      final isLightMode = Theme.of(context).brightness == Brightness.light;
+                      return Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isLightMode 
+                              ? Colors.white.withOpacity(0.95)
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          image: user?.profileImageUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(user!.profileImageUrl!),
+                                  fit: BoxFit.cover,
+                                  onError: (exception, stackTrace) {
+                                    // Will fall back to icon
+                                  },
+                                )
+                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: isLightMode 
+                                  ? Colors.black.withOpacity(0.08)
+                                  : Colors.black.withOpacity(0.2),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(28),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                              );
+                            },
+                            child: user?.profileImageUrl == null
+                                ? Center(
+                                    child: Icon(
+                                      Icons.person,
+                                      color: isLightMode 
+                                          ? const Color(0xFF1976D2) // Brighter, more vibrant blue
+                                          : Theme.of(context).colorScheme.onSurface,
+                                      size: 24,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => _buildCircularFloatingButton(
+                      context: context,
+                      icon: Icons.person,
+                      onPressed: () {},
+                      child: const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    error: (_, __) => _buildCircularFloatingButton(
+                      context: context,
+                      icon: Icons.person,
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Bottom floating navigation buttons
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildCircularNavButton(
+                      context: context,
+                      icon: Icons.chat_bubble_outline,
+                      isSelected: currentPage.value == 0,
+                      onPressed: () {
+                        pageController.animateToPage(
+                          0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: _buildCircularNavButton(
+                          context: context,
+                          icon: currentPage.value == 1 ? Icons.add : Icons.map,
+                          isSelected: currentPage.value == 1,
+                          onPressed: () {
+                            if (currentPage.value == 1) {
+                              isPlacingEvent.value = true;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Tap on the map to place your event'),
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                            } else {
+                              pageController.animateToPage(
+                                1,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    _buildCircularNavButton(
+                      context: context,
+                      icon: Icons.list,
+                      isSelected: currentPage.value == 2,
+                      onPressed: () {
+                        pageController.animateToPage(
+                          2,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -250,6 +372,7 @@ class MapScreen extends HookConsumerWidget {
     void Function(TapPosition, LatLng) handleMapTap,
     ValueNotifier<bool> isPlacingEvent,
     ValueNotifier<String> searchQuery,
+    ValueNotifier<DateTime> selectedDate,
   ) {
     final locationAsync = ref.watch(locationProvider);
     final mapFilters = ref.watch(mapFiltersProvider);
@@ -287,7 +410,7 @@ class MapScreen extends HookConsumerWidget {
                   ...eventsAsync.when(
                     data: (events) {
                       // Filter by search query if active
-                      final filteredEvents = searchQuery.value.isEmpty
+                      var filteredEvents = searchQuery.value.isEmpty
                           ? events
                           : events.where((event) {
                               final query = searchQuery.value.toLowerCase();
@@ -296,24 +419,56 @@ class MapScreen extends HookConsumerWidget {
                                   event.description.toLowerCase().contains(query);
                             }).toList();
                       
-                      return filteredEvents.map((event) {
-                      return Marker(
-                        point: LatLng(event.lat, event.lng),
-                        width: 40,
-                        height: 40,
-                        child: GestureDetector(
-                          onTap: () => showEventPopup(event),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(Icons.sports_soccer, color: Colors.white, size: 24),
-                          ),
-                        ),
-                      );
+                      // Filter events by selected date (show events on or after selected date)
+                      final selectedDateOnly = DateTime(selectedDate.value.year, selectedDate.value.month, selectedDate.value.day);
+                      filteredEvents = filteredEvents.where((event) {
+                        final eventDateOnly = DateTime(event.startTime.year, event.startTime.month, event.startTime.day);
+                        return eventDateOnly.isAtSameMomentAs(selectedDateOnly) || eventDateOnly.isAfter(selectedDateOnly);
                       }).toList();
+                      
+                      return filteredEvents.map((event) {
+                        final eventDateOnly = DateTime(event.startTime.year, event.startTime.month, event.startTime.day);
+                        final selectedDateOnly = DateTime(selectedDate.value.year, selectedDate.value.month, selectedDate.value.day);
+                        final daysDifference = eventDateOnly.difference(selectedDateOnly).inDays;
+                        
+                        // Calculate scale: 100% (today/0 days), 66% (1 day), 33% (2 days), 0% (3+ days)
+                        double scale = 1.0;
+                        if (daysDifference == 0) {
+                          scale = 1.0; // 100%
+                        } else if (daysDifference == 1) {
+                          scale = 0.66; // 66%
+                        } else if (daysDifference == 2) {
+                          scale = 0.33; // 33%
+                        } else {
+                          scale = 0.0; // 0% - hide
+                        }
+                        
+                        // Skip if scale is 0
+                        if (scale == 0.0) {
+                          return null;
+                        }
+                        
+                        final baseSize = 40.0;
+                        final scaledSize = baseSize * scale;
+                        final iconSize = 24.0 * scale;
+                        
+                        return Marker(
+                          point: LatLng(event.lat, event.lng),
+                          width: scaledSize,
+                          height: scaledSize,
+                          child: GestureDetector(
+                            onTap: () => showEventPopup(event),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2 * scale),
+                              ),
+                              child: Icon(Icons.sports_soccer, color: Colors.white, size: iconSize),
+                            ),
+                          ),
+                        );
+                      }).whereType<Marker>().toList();
                     },
                     loading: () => [],
                     error: (_, __) => [],
@@ -416,31 +571,31 @@ class MapScreen extends HookConsumerWidget {
               ),
             ),
           ),
-        // Filter button
-        Positioned(
-          top: 16,
-          right: 16,
-          child: FloatingActionButton(
-            mini: true,
-            onPressed: () {
-              showFilters.value = !showFilters.value;
-            },
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            child: Icon(
-              showFilters.value ? Icons.close : Icons.filter_list,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ),
-        // Filter panel
-        if (showFilters.value)
-          Positioned(
-            top: 80,
-            right: 16,
-            child: _buildFilterPanel(context, ref, mapFilters),
-          ),
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    
+    if (dateOnly == today) {
+      return 'Today';
+    } else if (dateOnly == today.add(const Duration(days: 1))) {
+      return 'Tomorrow';
+    } else if (dateOnly == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    return dateOnly != today;
   }
 
   Widget _buildFilterPanel(BuildContext context, WidgetRef ref, MapFilters filters) {
@@ -545,6 +700,154 @@ class MapScreen extends HookConsumerWidget {
       ),
     );
   }
+
+  Widget _buildCircularNavButton({
+    required BuildContext context,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onPressed,
+  }) {
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary
+            : (isLightMode 
+                ? Colors.white.withOpacity(0.95)
+                : Theme.of(context).colorScheme.surfaceContainerHighest),
+        boxShadow: [
+          BoxShadow(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.4)
+                : (isLightMode 
+                    ? Colors.black.withOpacity(0.08)
+                    : Colors.black.withOpacity(0.2)),
+            blurRadius: isSelected ? 16 : 12,
+            offset: const Offset(0, 4),
+            spreadRadius: isSelected ? 2 : 0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: onPressed,
+          child: Icon(
+            icon,
+            color: isSelected
+                ? Colors.white
+                : (isLightMode 
+                    ? const Color(0xFF1976D2) // Brighter, more vibrant blue
+                    : Theme.of(context).colorScheme.onSurface),
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircularFloatingButton({
+    required BuildContext context,
+    required IconData icon,
+    required VoidCallback onPressed,
+    Widget? child,
+  }) {
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isLightMode 
+            ? Colors.white.withOpacity(0.95)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
+        boxShadow: [
+          BoxShadow(
+            color: isLightMode 
+                ? Colors.black.withOpacity(0.08)
+                : Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: onPressed,
+          child: child != null
+              ? child
+              : Center(
+                  child: Icon(
+                    icon,
+                    color: isLightMode 
+                        ? const Color(0xFF1976D2) // Brighter, more vibrant blue
+                        : Theme.of(context).colorScheme.onSurface,
+                    size: 24,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  void _showSearchDialog(BuildContext context, WidgetRef ref, ValueNotifier<String> searchQuery, ValueNotifier<bool> showSearch) {
+    final textController = TextEditingController(text: searchQuery.value);
+    showSearch.value = true;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text('Search Events'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Search events...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            prefixIcon: const Icon(Icons.search),
+          ),
+          onChanged: (value) {
+            searchQuery.value = value;
+          },
+          onSubmitted: (_) {
+            Navigator.pop(context);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              textController.clear();
+              searchQuery.value = '';
+              Navigator.pop(context);
+              showSearch.value = false;
+            },
+            child: const Text('Clear'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    ).then((_) {
+      showSearch.value = false;
+    });
+  }
 }
 
 class EventPopup extends ConsumerWidget {
@@ -566,9 +869,9 @@ class EventPopup extends ConsumerWidget {
     final isHost = user?.uid == event.hostId;
 
             return DraggableScrollableSheet(
-              initialChildSize: 0.5,
+              initialChildSize: 0.65,
               minChildSize: 0.3,
-              maxChildSize: 0.7,
+              maxChildSize: 0.85,
               builder: (context, scrollController) {
                 return Container(
                   decoration: BoxDecoration(
@@ -772,7 +1075,7 @@ class EventPopup extends ConsumerWidget {
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
@@ -787,6 +1090,7 @@ class EventPopup extends ConsumerWidget {
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: attendeeIds.take(10).map((userId) {
+                                  final isHostUser = userId == event.hostId;
                                   return Consumer(
                                     builder: (context, ref, child) {
                                       final userAsync = ref.watch(userDataProvider(userId));
@@ -803,22 +1107,77 @@ class EventPopup extends ConsumerWidget {
                                                 ),
                                               );
                                             },
-                                            child: Container(
-                                              width: 40,
-                                              height: 40,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Colors.white, width: 2),
-                                                image: user?.profileImageUrl != null
-                                                    ? DecorationImage(
-                                                        image: NetworkImage(user!.profileImageUrl!),
-                                                        fit: BoxFit.cover,
-                                                      )
-                                                    : null,
-                                              ),
-                                              child: user?.profileImageUrl == null
-                                                  ? const Icon(Icons.person, size: 20)
-                                                  : null,
+                                            child: Stack(
+                                              children: [
+                                                Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(color: Colors.white, width: 2),
+                                                    image: user?.profileImageUrl != null
+                                                        ? DecorationImage(
+                                                            image: NetworkImage(user!.profileImageUrl!),
+                                                            fit: BoxFit.cover,
+                                                          )
+                                                        : null,
+                                                  ),
+                                                  child: user?.profileImageUrl == null
+                                                      ? const Icon(Icons.person, size: 20)
+                                                      : null,
+                                                ),
+                                                if (isHost && !isHostUser)
+                                                  Positioned(
+                                                    right: -2,
+                                                    top: -2,
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        final confirmed = await showDialog<bool>(
+                                                          context: context,
+                                                          builder: (context) => AlertDialog(
+                                                            title: const Text('Remove Participant'),
+                                                            content: Text('Are you sure you want to remove ${user?.username ?? 'this user'} from the event?'),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () => Navigator.pop(context, false),
+                                                                child: const Text('Cancel'),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () => Navigator.pop(context, true),
+                                                                style: TextButton.styleFrom(
+                                                                  foregroundColor: Colors.red,
+                                                                ),
+                                                                child: const Text('Remove'),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                        if (confirmed == true && context.mounted) {
+                                          await eventsRepo.removeAttendee(event.id, userId);
+                                          // Invalidate providers to update UI
+                                          ref.invalidate(attendeeCountProvider(event.id));
+                                          ref.invalidate(eventAttendeesProvider(event.id));
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            SnackBar(content: Text('${user?.username ?? 'User'} removed from event')),
+                                                          );
+                                                        }
+                                                      },
+                                                      child: Container(
+                                                        width: 18,
+                                                        height: 18,
+                                                        decoration: const BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          color: Colors.red,
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.close,
+                                                          size: 12,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -905,12 +1264,18 @@ class EventPopup extends ConsumerWidget {
                                                 icon: const Icon(Icons.check, color: Colors.green),
                                                 onPressed: () async {
                                                   await eventsRepo.approveRequest(event.id, userId);
+                                                  // Invalidate providers to update UI
+                                                  ref.invalidate(eventRequestsProvider(event.id));
+                                                  ref.invalidate(attendeeCountProvider(event.id));
+                                                  ref.invalidate(eventAttendeesProvider(event.id));
                                                 },
                                               ),
                                               IconButton(
                                                 icon: const Icon(Icons.close, color: Colors.red),
                                                 onPressed: () async {
                                                   await eventsRepo.rejectRequest(event.id, userId);
+                                                  // Invalidate providers to update UI
+                                                  ref.invalidate(eventRequestsProvider(event.id));
                                                 },
                                               ),
                                             ],
@@ -956,6 +1321,9 @@ class EventPopup extends ConsumerWidget {
                                         } else {
                                           await eventsRepo.requestToJoin(event.id, user.uid);
                                         }
+                                        // Invalidate providers to update UI
+                                        ref.invalidate(hasRequestedProvider(event.id));
+                                        ref.invalidate(eventRequestsProvider(event.id));
                                       },
                                       child: Text(hasRequested ? 'Request Sent' : 'Request to Join'),
                                     ),
@@ -1014,6 +1382,10 @@ class EventPopup extends ConsumerWidget {
                                           } else {
                                             await eventsRepo.joinEvent(event.id, user.uid);
                                           }
+                                          // Invalidate providers to update UI
+                                          ref.invalidate(isUserAttendingProvider(event.id));
+                                          ref.invalidate(attendeeCountProvider(event.id));
+                                          ref.invalidate(eventAttendeesProvider(event.id));
                                         },
                                         child: Text(isAttending ? 'Leave' : 'Join'),
                                       ),

@@ -5,8 +5,13 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.blue,
+        seedColor: const Color(0xFF2196F3), // Brighter blue
         brightness: Brightness.light,
+      ).copyWith(
+        primary: const Color(0xFF2196F3),
+        secondary: const Color(0xFF03A9F4),
+        surface: Colors.white,
+        onSurface: Colors.black87,
       ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
