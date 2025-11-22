@@ -4,7 +4,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import '../../map/providers/map_provider.dart';
 
 class EventsListScreen extends HookConsumerWidget {
-  const EventsListScreen({super.key});
+  final VoidCallback goToMapPage;
+  const EventsListScreen({super.key, required this.goToMapPage});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -85,8 +86,9 @@ class EventsListScreen extends HookConsumerWidget {
                             ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
+                              ref.read(mapSelectedEventProvider.notifier).state = event;
                               // Navigate back to map and center on event
-                              Navigator.of(context).popUntil((route) => route.isFirst);
+                              goToMapPage();
                               // TODO: Center map on event location
                             },
                           ),

@@ -15,6 +15,7 @@ import '../../../common/models/event_model.dart';
 import '../../../common/repositories/auth_repository.dart';
 import '../../../common/repositories/events_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/map_provider.dart';
 
 class MapScreen extends HookConsumerWidget {
   const MapScreen({super.key});
@@ -23,13 +24,29 @@ class MapScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mapController = useMemoized(() => MapController());
     final currentPage = useState(1); // 0: Chats, 1: Map, 2: List
-    final pageController = useMemoized(() => PageController(initialPage: 1));
-    final selectedEvent = useState<EventModel?>(null);
+    final pageController = usePageController(initialPage: 1);
+    
     final isPlacingEvent = useState(false);
 
     final locationAsync = ref.watch(locationProvider);
     final eventsAsync = ref.watch(eventsStreamProvider);
 
+    void showEventPopup(EventModel event) {
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => EventPopup(event: event),
+    ).then((_) { 
+        ref.read(mapSelectedEventProvider.notifier).state = null;
+      });
+    }
+    void goToMapPage() {
+      pageController.animateToPage(
+        1, // Index 1 is the MapView
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
     useEffect(() {
       locationAsync.whenData((position) {
         if (position != null) {
@@ -40,17 +57,13 @@ class MapScreen extends HookConsumerWidget {
         }
       });
       return null;
-    }, [locationAsync.value]);
-
-    void showEventPopup(EventModel event) {
-      selectedEvent.value = event;
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => EventPopup(event: event),
-      ).then((_) => selectedEvent.value = null);
+    }, []);
+    ref.listen<EventModel?>(mapSelectedEventProvider, (previous, next) {
+      if (next != null) {
+      showEventPopup(next);
+      }
     }
+    );
 
     void handleMapTap(TapPosition tapPosition, LatLng point) {
       if (isPlacingEvent.value) {
@@ -154,7 +167,7 @@ class MapScreen extends HookConsumerWidget {
         children: [
           const ChatsListScreen(),
           _buildMapView(context, ref, mapController, eventsAsync, showEventPopup, handleMapTap, isPlacingEvent, searchQuery),
-          const EventsListScreen(),
+          EventsListScreen(goToMapPage: goToMapPage),
         ],
       ),
       bottomNavigationBar: Container(
