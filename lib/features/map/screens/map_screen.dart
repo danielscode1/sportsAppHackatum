@@ -298,7 +298,7 @@ class MapScreen extends HookConsumerWidget {
                     loading: () => [],
                     error: (_, __) => [],
                   ),
-                // Amenity markers (toilets, water supply, and sport areas)
+                // Amenity markers (toilets and water supply)
                 ...AmenitiesData.allAmenities.where((amenity) {
                   switch (amenity.type) {
                     case AmenityType.toilet:
@@ -306,7 +306,7 @@ class MapScreen extends HookConsumerWidget {
                     case AmenityType.waterSupply:
                       return mapFilters.showWaterSupply;
                     case AmenityType.sportArea:
-                      return mapFilters.showSportAreas;
+                      return false; // Sport areas not used
                   }
                 }).map((amenity) {
                   return Marker(
@@ -322,9 +322,7 @@ class MapScreen extends HookConsumerWidget {
                             title: Text(
                               amenity.type == AmenityType.toilet 
                                   ? 'Public Toilet'
-                                  : amenity.type == AmenityType.waterSupply
-                                      ? 'Drinking Water'
-                                      : 'Sport Area',
+                                  : 'Drinking Water',
                             ),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -360,18 +358,14 @@ class MapScreen extends HookConsumerWidget {
                           decoration: BoxDecoration(
                             color: amenity.type == AmenityType.toilet 
                                 ? Colors.orange 
-                                : amenity.type == AmenityType.waterSupply
-                                    ? Colors.blue
-                                    : Colors.green,
+                                : Colors.blue,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: Icon(
                             amenity.type == AmenityType.toilet 
                                 ? Icons.wc 
-                                : amenity.type == AmenityType.waterSupply
-                                    ? Icons.water_drop
-                                    : Icons.sports_volleyball,
+                                : Icons.water_drop,
                             color: Colors.white,
                             size: 20,
                           ),
@@ -483,16 +477,6 @@ class MapScreen extends HookConsumerWidget {
             Icons.water_drop,
             Colors.blue,
             () => ref.read(mapFiltersProvider.notifier).toggleWaterSupply(),
-          ),
-          const SizedBox(height: 12),
-          _buildFilterOption(
-            context,
-            ref,
-            'Sport Areas',
-            filters.showSportAreas,
-            Icons.sports_volleyball,
-            Colors.green,
-            () => ref.read(mapFiltersProvider.notifier).toggleSportAreas(),
           ),
         ],
       ),
