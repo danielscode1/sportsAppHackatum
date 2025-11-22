@@ -6,5 +6,6 @@ Features:
 
 -current events and events in the future look different on the map
 
+-events in Events bar can't be selected
 Presentation:
 - demo with a few existing events
