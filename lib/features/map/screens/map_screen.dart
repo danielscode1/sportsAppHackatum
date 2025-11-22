@@ -41,7 +41,13 @@ class MapScreen extends HookConsumerWidget {
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        builder: (context) => EventPopup(event: event),
+        backgroundColor: Colors.transparent,
+        builder: (context) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: EventPopup(event: event),
+        ),
     ).then((_) { 
         ref.read(mapSelectedEventProvider.notifier).state = null;
       });
@@ -939,6 +945,8 @@ class EventPopup extends ConsumerWidget {
                             final user = authState.value;
                             final isHost = user?.uid == event.hostId;
 
+                            final bool canChat = isHost || isAttending;
+                    
                             if (event.isInviteOnly && !isAttending && !isHost) {
                               return Row(
                                 children: [
@@ -1004,7 +1012,7 @@ class EventPopup extends ConsumerWidget {
                                       child: ElevatedButton(
                                         onPressed: () async {
                                           if (user == null) return;
-                                          if (isAttending) {
+                                          if(isAttending) {
                                             await eventsRepo.leaveEvent(event.id, user.uid);
                                           } else {
                                             await eventsRepo.joinEvent(event.id, user.uid);
@@ -1014,19 +1022,19 @@ class EventPopup extends ConsumerWidget {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (context) => ChatScreen(eventId: event.id),
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Open Chat'),
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: canChat ? () {
+                                            Navigator.pop(context);
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (context) => ChatScreen(eventId: event.id),
+                                              ),
+                                            );
+                                          } : null,
+                                          child: const Text('Open Chat'),
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ],
