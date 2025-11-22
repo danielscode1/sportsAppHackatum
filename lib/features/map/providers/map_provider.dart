@@ -9,7 +9,7 @@ import '../../auth/providers/auth_provider.dart';
 final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
   return EventsRepository();
 });
-
+final mapSelectedEventProvider = StateProvider<EventModel?>((ref) => null);
 final eventsStreamProvider = StreamProvider<List<EventModel>>((ref) {
   final repository = ref.watch(eventsRepositoryProvider);
   return repository.getEventsStream();
