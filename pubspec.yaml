@@ -43,4 +43,11 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 
 flutter:
+<<<<<<< HEAD
   uses-material-design: true
+=======
+  uses-material-design: true
+
+  assets:
+    - assets/sports/
+>>>>>>> 2ccb00d (update event detail image + assets)
