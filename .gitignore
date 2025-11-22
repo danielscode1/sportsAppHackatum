@@ -5,9 +5,11 @@
 *.swp
 .DS_Store
 .atom/
+.build/
 .buildlog/
 .history
 .svn/
+.swiftpm/
 migrate_working_dir/
 
 # IntelliJ related
@@ -51,3 +53,7 @@ firebase_options.dart
 .env
 .env.local
 
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
