@@ -65,13 +65,13 @@ class EventCreationScreen extends HookConsumerWidget {
         final capacity = int.tryParse(capacityController.text) ?? 20;
 
         final event = EventModel(
-          id: '', // Will be set by Firestore
+          id: '', 
           hostId: user.uid,
           title: titleController.text.trim(),
           sportType: selectedSportType.value,
           description: descriptionController.text.trim(),
           note: noteController.text.trim(),
-          datetime: startTime.value, // Keep for backward compatibility
+          datetime: startTime.value,
           startTime: startTime.value,
           endTime: endTime.value,
           capacity: capacity,
@@ -127,11 +127,16 @@ class EventCreationScreen extends HookConsumerWidget {
         time.hour,
         time.minute,
       );
+
       startTime.value = newStartTime;
-      
-      // Auto-adjust end time if it's before start time
-      if (endTime.value.isBefore(newStartTime) || endTime.value.isAtSameMomentAs(newStartTime)) {
-        endTime.value = newStartTime.add(const Duration(hours: 1));
+
+      final newDefaultEnd = newStartTime.add(const Duration(hours: 2));
+
+      final maxEnd = newStartTime.add(const Duration(hours: 5));
+
+      if (endTime.value.isBefore(newDefaultEnd) ||
+          endTime.value.isAfter(maxEnd)) {
+        endTime.value = newDefaultEnd;
       }
     }
 
@@ -140,7 +145,7 @@ class EventCreationScreen extends HookConsumerWidget {
         context: context,
         initialDate: endTime.value,
         firstDate: startTime.value,
-        lastDate: DateTime.now().add(const Duration(days: 365)),
+        lastDate: startTime.value.add(const Duration(days: 1)),
       );
 
       if (date == null) return;
@@ -159,16 +164,31 @@ class EventCreationScreen extends HookConsumerWidget {
         time.hour,
         time.minute,
       );
-      
-      // Ensure end time is after start time
-      if (newEndTime.isAfter(startTime.value)) {
-        endTime.value = newEndTime;
-      } else {
+
+      final minEnd = startTime.value.add(const Duration(minutes: 1));
+
+      final maxEnd = startTime.value.add(const Duration(hours: 5));
+
+      if (newEndTime.isBefore(minEnd)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('End time must be after start time')),
         );
+        return;
       }
+
+      if (newEndTime.isAfter(maxEnd)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('End time cannot be more than 5 hours after start')),
+        );
+
+        endTime.value = maxEnd;
+        return;
+      }
+
+      endTime.value = newEndTime;
     }
+
 
     return Scaffold(
       appBar: AppBar(

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "578146280080",
-    "project_id": "hackatumsportsapp-d4582",
-    "storage_bucket": "hackatumsportsapp-d4582.firebasestorage.app"
+    "project_number": "397103336796",
+    "project_id": "sportsappmunich",
+    "storage_bucket": "sportsappmunich.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:578146280080:android:4ea396c11233cf8a6eee15",
+        "mobilesdk_app_id": "1:397103336796:android:5a1b8d6af833923be7c599",
         "android_client_info": {
           "package_name": "com.example.sports_app_hackatum"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCmHVblx9slYBB2DCqMWOevROm4Kw1Sgdc"
+          "current_key": "AIzaSyBNPc6wF1UG_nxnBFvofm8stft48dE4OjE"
         }
       ],
       "services": {
