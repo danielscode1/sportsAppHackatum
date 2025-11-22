@@ -43,11 +43,6 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 
 flutter:
-<<<<<<< HEAD
   uses-material-design: true
-
   assets:
     - assets/sports/
-=======
-  uses-material-design: true
->>>>>>> origin/main
