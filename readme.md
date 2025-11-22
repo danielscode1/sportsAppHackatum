@@ -32,7 +32,7 @@ A mobile Flutter app for organizing spontaneous sports events with strangers in 
 
 **⚠️ Important**: You need to create a Firebase project first via the [Firebase Console](https://console.firebase.google.com/) before running `flutterfire configure`.
 
-**See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed step-by-step instructions.**
+**See (DOESNT EXIST) [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed step-by-step instructions.**
 
 Quick steps:
 
