@@ -1,0 +1,20 @@
+Fixing Bugs:
+
+- return to map after leaving chat
+
+- replace second chat icon on the top left of the main window with search
+
+Features:
+
+- nicer looking ui
+
+- invite only events
+
+- participants preview of event?
+
+-adding positions of toilets and water stations
+
+-current events and events in the future look different on the map
+
+Presentation:
+- demo with a few existing events
