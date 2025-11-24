@@ -1,6 +1,6 @@
 # Sports Munich - Flutter MVP
 
-A mobile Flutter app for organizing spontaneous sports events with strangers in Munich.
+A Flutter app for organizing spontaneous sports events with strangers in Munich.
 
 ## Features
 
